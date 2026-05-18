@@ -58,27 +58,27 @@ jobs:
             docker pull ${{ secrets.DOCKER_USERNAME }}/innovatech-backend:latest
             docker pull ${{ secrets.DOCKER_USERNAME }}/innovatech-frontend:latest
 
-            # 6. LEVANTAR EL STACK CORRECTO (Conexión real MySQL)
+           # 6. LEVANTAR EL STACK CORRECTO (Puertos sincronizados)
             
-            # A) Base de Datos MySQL oficial mapeada con los datos de tu código
+            # A) Base de Datos MySQL
             docker run -d --name mysql-db --network innovatech-net \
               -e MYSQL_ROOT_PASSWORD=secret \
               -e MYSQL_DATABASE=innovatech_metadata \
               -v mysql-data:/var/lib/mysql mysql:8.0
             
-            # Esperamos 15 segundos a que MySQL termine de crear las tablas internas antes de lanzar el Back
+            # Esperamos a que MySQL reaccione
             sleep 15
 
-            # B) Backend enlazado a la red interna apuntando al host 'mysql-db'
-            docker run -d --name innovatech-back --network innovatech-net -p 5000:5000 \
-              -e PORT=5000 \
+            # B) Backend (Abriendo el puerto 8080 que pide tu código por defecto)
+            docker run -d --name innovatech-back --network innovatech-net -p 8080:8080 -p 5000:5000 \
+              -e PORT=8080 \
               -e DB_HOST=mysql-db \
               -e DB_USER=root \
               -e DB_PASSWORD=secret \
               -e DB_NAME=innovatech_metadata \
               ${{ secrets.DOCKER_USERNAME }}/innovatech-backend:latest
             
-            # C) Frontend (Proxy Inverso en puerto 80)
+            # C) Frontend (Proxy Inverso)
             docker run -d --name innovatech-front --network innovatech-net -p 80:80 ${{ secrets.DOCKER_USERNAME }}/innovatech-frontend:latest
 
             # 7. AUDITORÍA DE LOGS FINALES
