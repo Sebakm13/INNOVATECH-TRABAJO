@@ -17,8 +17,8 @@
     </div>
 
     <script>
-        // Llama al backend en el puerto 8080 para verificar la conexión
-        fetch('http://localhost:8080/api/datos')
+        // Llama a la ruta relativa que Nginx procesará mediante el archivo nginx.conf
+        fetch('/api/datos')
             .then(res => res.json())
             .then(data => {
                 document.getElementById('contenido-api').innerHTML = `<p style="color: green; font-weight: bold;">Backend dice: ${data.mensaje}</p>`;
