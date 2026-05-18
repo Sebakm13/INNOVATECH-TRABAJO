@@ -58,19 +58,15 @@ jobs:
             docker pull ${{ secrets.DOCKER_USERNAME }}/innovatech-backend:latest
             docker pull ${{ secrets.DOCKER_USERNAME }}/innovatech-frontend:latest
 
-            # 6. LEVANTAR EL STACK COMPLETO (Conexión blindada a MongoDB)
+            # 6. LEVANTAR EL STACK COMPLETO (Solución definitiva para código hardcodeado)
             
-            # A) Base de Datos
-            docker run -d --name mongo-db --network innovatech-net -v mongo-data:/data/db mongo:latest
+            # A) Levantar la Base de Datos expuesta internamente en localhost
+            docker run -d --name mongo-db --network innovatech-net -p 27017:27017 -v mongo-data:/data/db mongo:latest
             
-            # B) Backend (Inyectando ambas variables posibles para asegurar conexión total)
-            docker run -d --name innovatech-back --network innovatech-net -p 5000:5000 \
-              -e PORT=5000 \
-              -e MONGO_URI=mongodb://mongo-db:27017/innovatech \
-              -e MONGO_URL=mongodb://mongo-db:27017/innovatech \
-              ${{ secrets.DOCKER_USERNAME }}/innovatech-backend:latest
+            # B) Backend: Forzamos a que comparta la red de mongo-db para heredar su localhost
+            docker run -d --name innovatech-back --network container:mongo-db ${{ secrets.DOCKER_USERNAME }}/innovatech-backend:latest
             
-            # C) Frontend
+            # C) Frontend: Se conecta a la red común mapeando el puerto hacia el host de mongo en el 5000
             docker run -d --name innovatech-front --network innovatech-net -p 80:80 ${{ secrets.DOCKER_USERNAME }}/innovatech-frontend:latest
 
             # 7. ESPERAR Y VERIFICAR EL LOG EXITOSO
