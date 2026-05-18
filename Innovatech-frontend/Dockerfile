@@ -6,10 +6,13 @@ COPY index.html .
 # ETAPA 2: Servidor de Producción con Mínimo Privilegio (Usuario no Root)
 FROM nginx:alpine
 
-# Copiar el archivo de configuración limpio del Proxy Inverso
+# Eliminar la configuración por defecto para evitar conflictos
+RUN rm /etc/nginx/conf.d/default.conf
+
+# Copiar nuestra configuración personalizada de Proxy Inverso
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Copiar el archivo HTML index
+# Copiar el HTML index generado en la etapa de build
 COPY --from=build /app/index.html /usr/share/nginx/html/index.html
 
 # REQUERIMIENTO DE SEGURIDAD: Modificar permisos para usar usuario sin privilegios
