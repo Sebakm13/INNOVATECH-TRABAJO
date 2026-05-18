@@ -3,7 +3,7 @@ name: Pipeline CI/CD Monorepo Innovatech
 on:
   push:
     branches:
-      - main
+      - main     # <--- Asegúrate de que diga 'main' aquí en tu código
 
 jobs:
   build-and-push:
