@@ -58,13 +58,13 @@ jobs:
             docker pull ${{ secrets.DOCKER_USERNAME }}/innovatech-backend:latest
             docker pull ${{ secrets.DOCKER_USERNAME }}/innovatech-frontend:latest
 
-            # 6. LEVANTAR EL STACK COMPLETO (Sincronizado y Conectado)
+            # 6. LEVANTAR EL STACK COMPLETO (Sincronizado al Puerto 5000)
             
-            # A) Levantar la Base de Datos privada
+            # A) Base de Datos
             docker run -d --name mongo-db --network innovatech-net -v mongo-data:/data/db mongo:latest
             
-            # B) Levantar el Backend inyectándole la URI de MongoDB para que no se caiga
-            docker run -d --name innovatech-back --network innovatech-net -p 8080:8080 -e MONGO_URI=mongodb://mongo-db:27017/innovatech ${{ secrets.DOCKER_USERNAME }}/innovatech-backend:latest
+            # B) Backend en puerto 5000 nativo
+            docker run -d --name innovatech-back --network innovatech-net -p 5000:5000 -e MONGO_URI=mongodb://mongo-db:27017/innovatech ${{ secrets.DOCKER_USERNAME }}/innovatech-backend:latest
             
-            # C) Levantar el Frontend en el puerto web estándar
+            # C) Frontend
             docker run -d --name innovatech-front --network innovatech-net -p 80:80 ${{ secrets.DOCKER_USERNAME }}/innovatech-frontend:latest
