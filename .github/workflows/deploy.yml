@@ -1,0 +1,47 @@
+name: Pipeline CI/CD Monorepo Innovatech
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del codigo
+        uses: actions/checkout@v3
+
+      - name: Autenticar en Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Compilar y subir Frontend
+        run: |
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/innovatech-frontend:latest ./Innovatech-frontend
+          docker push ${{ secrets.DOCKER_USERNAME }}/innovatech-frontend:latest
+
+      - name: Compilar y subir Backend
+        run: |
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/innovatech-backend:latest ./Innovatech-backend
+          docker push ${{ secrets.DOCKER_USERNAME }}/innovatech-backend:latest
+
+  deploy-to-aws:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    steps:
+      - name: Desplegar en Servidor AWS via SSH
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.AWS_HOST }}
+          username: ${{ secrets.AWS_USER }}
+          key: ${{ secrets.AWS_SSH_KEY }}
+          script: |
+            docker stop innovatech-front innovatech-back || true
+            docker rm innovatech-front innovatech-back || true
+            docker pull ${{ secrets.DOCKER_USERNAME }}/innovatech-frontend:latest
+            docker pull ${{ secrets.DOCKER_USERNAME }}/innovatech-backend:latest
+            docker run -d --name innovatech-front -p 80:80 ${{ secrets.DOCKER_USERNAME }}/innovatech-frontend:latest
+            docker run -d --name innovatech-back -p 5000:5000 ${{ secrets.DOCKER_USERNAME }}/innovatech-backend:latest
