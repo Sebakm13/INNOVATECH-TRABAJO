@@ -32,62 +32,39 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-and-push
     steps:
-      - name: Ejecutar Despliegue con Docker Compose via SSH
+      - name: Ejecutar Despliegue en AWS via SSH
         uses: appleboy/ssh-action@v0.1.10
         with:
           host: ${{ secrets.AWS_HOST }}
           username: ${{ secrets.AWS_USER }}
           key: ${{ secrets.AWS_SSH_KEY }}
           script: |
-            # 1. Asegurar que la carpeta exista en AWS y entrar en ella
-            mkdir -p /home/ubuntu/innovatech-app
-            cd /home/ubuntu/innovatech-app
-            
-            # 2. Escribir el docker-compose directamente en el servidor AWS (Solución limpia y robusta)
-            cat << 'EOF' > docker-compose.yml
-            version: "3.8"
+            # 1. Crear y entrar a una carpeta segura con permisos universales
+            mkdir -p /tmp/innovatech-app
+            cd /tmp/innovatech-app
 
-            services:
-              innovatech-back:
-                image: ${{ secrets.DOCKER_USERNAME }}/innovatech-backend:latest
-                container_name: innovatech-back
-                ports:
-                  - "8080:8080"
-                environment:
-                  - MONGO_URI=mongodb://mongo-db:27017/innovatech
-                networks:
-                  - innovatech-net
-                depends_on:
-                  - mongo-db
-
-              innovatech-front:
-                image: ${{ secrets.DOCKER_USERNAME }}/innovatech-frontend:latest
-                container_name: innovatech-front
-                ports:
-                  - "80:80"
-                networks:
-                  - innovatech-net
-
-              mongo-db:
-                image: mongo:latest
-                container_name: mongo-db
-                networks:
-                  - innovatech-net
-                volumes:
-                  - mongo-data:/data/db
-
-            networks:
-              innovatech-net:
-                driver: bridge
-
-            volumes:
-              mongo-data:
-            EOF
-
-            # 3. Iniciar sesión en Docker Hub desde AWS
+            # 2. Iniciar sesión en Docker Hub desde el servidor
             docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+
+            # 3. Crear la red interna aislada si no existe
+            docker network create innovatech-net || true
+
+            # 4. Apagar y eliminar de raíz cualquier contenedor viejo
+            docker stop innovatech-front innovatech-back mongo-db || true
+            docker rm innovatech-front innovatech-back mongo-db || true
+
+            # 5. Descargar las últimas versiones limpias de las imágenes
+            docker pull mongo:latest
+            docker pull ${{ secrets.DOCKER_USERNAME }}/innovatech-backend:latest
+            docker pull ${{ secrets.DOCKER_USERNAME }}/innovatech-frontend:latest
+
+            # 6. LEVANTAR EL STACK COMPLETO (Sincronizado y Conectado)
             
-            # 4. Actualizar las imágenes nuevas, detener el stack viejo y encender el nuevo
-            docker compose pull
-            docker compose down || true
-            docker compose up -d
+            # A) Levantar la Base de Datos privada
+            docker run -d --name mongo-db --network innovatech-net -v mongo-data:/data/db mongo:latest
+            
+            # B) Levantar el Backend inyectándole la URI de MongoDB para que no se caiga
+            docker run -d --name innovatech-back --network innovatech-net -p 8080:8080 -e MONGO_URI=mongodb://mongo-db:27017/innovatech ${{ secrets.DOCKER_USERNAME }}/innovatech-backend:latest
+            
+            # C) Levantar el Frontend en el puerto web estándar
+            docker run -d --name innovatech-front --network innovatech-net -p 80:80 ${{ secrets.DOCKER_USERNAME }}/innovatech-frontend:latest
